@@ -1,0 +1,85 @@
+---
+title: Practical Machine Learning Project  
+author: "Jianheng Zhang"
+output: 
+  html_document
+---
+ 
+================================================  
+
+## Background  
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, our goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: [http://groupware.les.inf.puc-rio.br/har](http://groupware.les.inf.puc-rio.br/har) (see the section on the Weight Lifting Exercise Dataset).   
+
+## Data  
+The training data for this project is available here:  
+[https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv)  
+The test data is available here:  
+[https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv)  
+The data for this project comes from this original source: [http://groupware.les.inf.puc-rio.br/har](http://groupware.les.inf.puc-rio.br/har). If you use the document you create for this class for any purpose please cite them as they have been very generous in allowing their data to be used for this kind of assignment.  
+
+## Results  
+The goal of this project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. You may use any of the other variables to predict with. You should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test cases. 
+
+## Approach  
+Decision tree and random forest will be used to test. The model with the highest accuracy will be chosen as our final model.
+
+Cross-validation will be performed by subsampling our training data set randomly without replacement into 2 subsamples: 75% of the original Training data set as traning data and the other 25% as test data. 
+
+For this data, participants perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in 5 different styles:
+
+- exactly according to the specification (Class A)
+- throwing the elbows to the front (Class B)
+- lifting the dumbbell only halfway (Class C)
+- lowering the dumbbell only halfway (Class D)
+- throwing the hips to the front (Class E)
+
+## Getting Data  
+```{r}
+library(lattice); 
+library(ggplot2); 
+library(caret); 
+library(randomForest);
+library(rpart); 
+library(rpart.plot);
+
+set.seed(8888)
+
+# data load and clean up
+trainingset <- read.csv("pml-training.csv", na.strings=c("NA","#DIV/0!", ""))
+testingset <- read.csv("pml-testing.csv", na.strings=c("NA","#DIV/0!", ""))
+
+# Delete columns with all missing values
+trainingset<-trainingset[,colSums(is.na(trainingset)) == 0]
+testingset <-testingset[,colSums(is.na(testingset)) == 0]
+
+trainingset   <-trainingset[,-c(1:7)]
+testingset <-testingset[,-c(1:7)]
+
+trainset <- createDataPartition(y=trainingset$classe, p=0.75, list=FALSE)
+tTransSet <- trainingset[trainset, ] 
+tstTrainSet <- trainingset[-trainset, ]
+
+plot(tTransSet$classe, col="orange", main="levels of variable classe", xlab="classe", ylab="Frequency")
+```  
+
+Based on the graph above, we can see that each level frequency is within the same order of magnitude of each other. Class A is the most frequent while Class D is the least frequent.
+
+##Decision Tree
+
+```{r}
+model1 <- rpart(classe ~ ., data=tTransSet, method="class")
+prediction1 <- predict(model1, tstTrainSet, type = "class")
+rpart.plot(model1, main="Classification Tree", extra=102, under=TRUE, faclen=0)
+confusionMatrix(prediction1, tstTrainSet$classe)
+```
+
+##Random Forest
+```{r}
+model2 <- randomForest(classe ~. , data=tTransSet, method="class")
+prediction2 <- predict(model2, tstTrainSet, type = "class")
+confusionMatrix(prediction2, tstTrainSet$classe)
+```
+
+##Decision
+Random Forest is better than Decision Trees. Accuracy for Random Forest model was 0.995 (95% CI: (0.993, 0.997)) compared to Decision Tree model with 0.739 (95% CI: (0.727, 0.752)). The Random Forests model is selected. The expected out-of-sample error is estimated at 0.005, or 0.5%.
+
